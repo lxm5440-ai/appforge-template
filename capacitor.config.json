@@ -1,0 +1,10 @@
+{
+  "appId": "io.github.josevdr95.NOMBRE_APP",
+  "appName": "NOMBRE_APP",
+  "webDir": "www",
+  "server": { "androidScheme": "https" },
+  "plugins": {
+    "SplashScreen": { "launchShowDuration": 1200, "backgroundColor": "#0a0f1d", "showSpinner": false },
+    "StatusBar": { "style": "DARK", "backgroundColor": "#0a0f1d" }
+  }
+}

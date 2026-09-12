@@ -1,0 +1,26 @@
+{
+  "name": "nombre-app",
+  "displayName": "NOMBRE_APP",
+  "version": "1.0.0",
+  "description": "DESCRIPCION_DE_LA_APP",
+  "main": "index.html",
+  "author": { "name": "josevdr95", "email": "josevdr95@gmail.com", "url": "https://github.com/josevdr95new" },
+  "license": "MIT",
+  "scripts": {
+    "build": "echo 'No build step required' && exit 0",
+    "dev": "npx http-server www -p 8080 -c-1",
+    "cap:add": "npx cap add android",
+    "cap:sync": "npx cap sync android",
+    "cap:open": "npx cap open android",
+    "android:build": "cd android && ./gradlew assembleDebug"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.0.0",
+    "@capacitor/app": "^6.0.0",
+    "@capacitor/core": "^6.0.0",
+    "@capacitor/splash-screen": "^6.0.0",
+    "@capacitor/status-bar": "^6.0.0",
+    "@capacitor/toast": "^6.0.0"
+  },
+  "devDependencies": { "@capacitor/cli": "^6.0.0" }
+}

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta http-equiv="Content-Security-Policy" content="default-src *; script-src * 'unsafe-inline' 'unsafe-eval'; style-src * 'unsafe-inline'; img-src * data: blob:; connect-src *" />
+  <meta name="theme-color" content="#0a0f1d" />
+  <title>NOMBRE_APP</title>
+  <script src="js/tailwind.js"></script>
+  <script>
+    tailwind.config = { theme: { extend: {
+      colors: { ink: { 900:'#0a0f1d', 800:'#0f172a', 700:'#1e293b', 600:'#334155', 400:'#64748b', 200:'#cbd5e1' } },
+    }}};
+  </script>
+  <link rel="stylesheet" href="css/style.css" />
+  <script src="js/lucide.js"></script>
+</head>
+<body class="bg-ink-900 text-ink-200 antialiased">
+
+<div class="min-h-screen flex flex-col items-center justify-center p-6">
+  <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-emerald-400 to-cyan-500 grid place-items-center shadow-lg shadow-emerald-500/20 mb-4">
+    <i data-lucide="app-window" class="w-10 h-10 text-ink-900"></i>
+  </div>
+  <h1 class="text-2xl font-bold text-white">NOMBRE_APP</h1>
+  <p class="text-sm text-ink-400 mt-1">v1.0.0</p>
+  <p class="text-xs text-ink-400 mt-4 text-center max-w-xs">Descripción de la app aquí.</p>
+
+  <div class="mt-8 w-full max-w-sm space-y-3">
+    <!-- Contenido de la app aquí -->
+  </div>
+
+  <div class="mt-auto pt-8 text-center">
+    <p class="text-[10px] text-ink-600">josevdr95 · v1.0.0 · MIT © 2026</p>
+  </div>
+</div>
+
+<script src="js/app.js"></script>
+<script>
+  // App initialization
+  console.log('NOMBRE_APP iniciada');
+  lucide.createIcons();
+</script>
+</body>
+</html>

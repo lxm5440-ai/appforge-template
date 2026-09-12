@@ -1,0 +1,243 @@
+name: Build APK
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'www/**'
+      - 'assets/**'
+      - 'app.config.json'
+      - 'capacitor.config.json'
+      - 'package.json'
+      - 'android-plugin/**'
+      - '.github/workflows/build.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Compilar APK
+    runs-on: ubuntu-latest
+    if: >
+      !contains(github.event.head_commit.message, '[skip]') &&
+      !contains(github.event.head_commit.message, '[noc]')
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 17 }
+
+      - uses: android-actions/setup-android@v3
+        with: { packages: 'tools platform-tools build-tools;34.0.0 platforms;android-34' }
+
+      - name: Leer configuración
+        id: cfg
+        run: |
+          CFG=$(cat app.config.json)
+          APP_ID=$(echo "$CFG" | jq -r '.appId')
+          APP_NAME=$(echo "$CFG" | jq -r '.appName')
+          VERSION=$(echo "$CFG" | jq -r '.version')
+          VERSION_CODE=$(echo "$CFG" | jq -r '.versionCode')
+          MIN_SDK=$(echo "$CFG" | jq -r '.android.minSdkVersion')
+          TARGET_SDK=$(echo "$CFG" | jq -r '.android.targetSdkVersion')
+          COMPILE_SDK=$(echo "$CFG" | jq -r '.android.compileSdkVersion')
+          SAFE_NAME=$(echo "$APP_NAME" | sed 's/ /-/g')
+          echo "appId=$APP_ID" >> $GITHUB_OUTPUT
+          echo "appName=$APP_NAME" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "versionCode=$VERSION_CODE" >> $GITHUB_OUTPUT
+          echo "minSdk=$MIN_SDK" >> $GITHUB_OUTPUT
+          echo "targetSdk=$TARGET_SDK" >> $GITHUB_OUTPUT
+          echo "compileSdk=$COMPILE_SDK" >> $GITHUB_OUTPUT
+          echo "safeName=$SAFE_NAME" >> $GITHUB_OUTPUT
+
+      - name: Instalar Capacitor 6
+        run: |
+          npm init -y
+          npm install @capacitor/core@^6.0.0 @capacitor/cli@^6.0.0 \
+            @capacitor/android@^6.0.0 @capacitor/app@^6.0.0 \
+            @capacitor/splash-screen@^6.0.0 @capacitor/status-bar@^6.0.0 \
+            @capacitor/toast@^6.0.0
+
+      - name: Inicializar Capacitor
+        run: npx cap init "${{ steps.cfg.outputs.appName }}" "${{ steps.cfg.outputs.appId }}" --web-dir www
+
+      - name: Añadir Android
+        run: if [ ! -d android ]; then npx cap add android; fi
+
+      - name: Copiar plugins nativos (si existen)
+        run: |
+          if [ -d android-plugin ]; then
+            find android-plugin -name "*.java" | while read f; do
+              pkg=$(head -1 "$f" | sed 's/package //;s/;//')
+              pkg_path=$(echo "$pkg" | tr '.' '/')
+              mkdir -p "android/app/src/main/java/$pkg_path"
+              cp "$f" "android/app/src/main/java/$pkg_path/"
+              echo "✓ Copiado: $f → $pkg_path"
+            done
+            # Copiar recursos XML si existen
+            if [ -d android-plugin/res ]; then
+              cp -r android-plugin/res/* android/app/src/main/res/ 2>/dev/null || true
+            fi
+          else
+            echo "Sin plugins nativos"
+          fi
+
+      - name: Crear MainActivity
+        run: |
+          APP_ID="${{ steps.cfg.outputs.appId }}"
+          PKG_PATH=$(echo "$APP_ID" | tr '.' '/')
+          MAIN=android/app/src/main/java/$PKG_PATH/MainActivity.java
+          mkdir -p $(dirname "$MAIN")
+
+          # Buscar plugins Java para registrar
+          PLUGINS=""
+          if [ -d android-plugin ]; then
+            PLUGINS=$(find android-plugin -name "*.java" -exec grep -l "@CapacitorPlugin" {} \; | while read f; do
+              pkg=$(head -1 "$f" | sed 's/package //;s/;//')
+              cls=$(basename "$f" .java)
+              echo "import ${pkg}.${cls}; registerPlugin(${cls}.class);"
+            done | tr '\n' ' ')
+          fi
+
+          # Construir imports y registerPlugin lines
+          IMPORTS=""
+          REGISTERS=""
+          if [ -d android-plugin ]; then
+            find android-plugin -name "*.java" -exec grep -l "@CapacitorPlugin" {} \; | while read f; do
+              pkg=$(head -1 "$f" | sed 's/package //;s/;//')
+              cls=$(basename "$f" .java)
+              echo "import ${pkg}.${cls};" >> /tmp/imports.txt
+              echo "registerPlugin(${cls}.class);" >> /tmp/registers.txt
+            done
+            if [ -f /tmp/imports.txt ]; then
+              IMPORTS=$(cat /tmp/imports.txt | tr '\n' ' ')
+              REGISTERS=$(cat /tmp/registers.txt | tr '\n' ' ')
+            fi
+          fi
+
+          cat > "$MAIN" <<EOF
+          package $APP_ID;
+          import android.os.Bundle;
+          import com.getcapacitor.BridgeActivity;
+          $IMPORTS
+          public class MainActivity extends BridgeActivity {
+            @Override
+            public void onCreate(Bundle savedInstanceState) {
+              $REGISTERS
+              super.onCreate(savedInstanceState);
+            }
+          }
+          EOF
+          echo "✓ MainActivity creado"
+          cat "$MAIN"
+
+      - name: Añadir permisos al AndroidManifest
+        run: |
+          MANIFEST=android/app/src/main/AndroidManifest.xml
+          PERMS=$(jq -r '.android.permissions[]' app.config.json)
+          for p in $PERMS; do
+            if ! grep -q "$p" $MANIFEST; then
+              python3 -c "
+          with open('$MANIFEST','r') as f: c=f.read()
+          c=c.replace('</manifest>','\t<uses-permission android:name=\"$p\"/>\n</manifest>')
+          with open('$MANIFEST','w') as f: f.write(c)
+          "
+            fi
+          done
+
+      - name: Registrar servicios y receivers (si existen)
+        run: |
+          MANIFEST=android/app/src/main/AndroidManifest.xml
+          if [ -d android-plugin ]; then
+            # Buscar clases que extienden Service o DeviceAdminReceiver
+            find android-plugin -name "*.java" | while read f; do
+              if grep -q "extends Service" "$f" || grep -q "extends.*Service" "$f"; then
+                cls=$(basename "$f" .java)
+                pkg=$(head -1 "$f" | sed 's/package //;s/;//')
+                full="$pkg.$cls"
+                if ! grep -q "$full" "$MANIFEST"; then
+                  python3 -c "
+          with open('$MANIFEST','r') as f: c=f.read()
+          svc='\t<service android:name=\"$full\" android:exported=\"false\" android:foregroundServiceType=\"specialUse\"><property android:name=\"android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE\" android:value=\"app_service\" /></service>\n'
+          c=c.replace('</application>', svc + '</application>')
+          with open('$MANIFEST','w') as f: f.write(c)
+          "
+                  echo "✓ Servicio registrado: $full"
+                fi
+              fi
+              if grep -q "DeviceAdminReceiver" "$f"; then
+                cls=$(basename "$f" .java)
+                pkg=$(head -1 "$f" | sed 's/package //;s/;//')
+                full="$pkg.$cls"
+                if ! grep -q "$full" "$MANIFEST"; then
+                  python3 -c "
+          with open('$MANIFEST','r') as f: c=f.read()
+          rcv='\t<receiver android:name=\"$full\" android:permission=\"android.permission.BIND_DEVICE_ADMIN\" android:exported=\"true\"><meta-data android:name=\"android.app.device_admin\" android:resource=\"@xml/device_admin\" /><intent-filter><action android:name=\"android.app.action.DEVICE_ADMIN_ENABLED\" /></intent-filter></receiver>\n'
+          c=c.replace('</application>', rcv + '</application>')
+          with open('$MANIFEST','w') as f: f.write(c)
+          "
+                  echo "✓ Receiver registrado: $full"
+                fi
+              fi
+            done
+          fi
+          grep -E "uses-permission|service|receiver" $MANIFEST | head -20
+
+      - name: Configurar SDK
+        run: |
+          VG=android/variables.gradle
+          if [ -f "$VG" ]; then
+            sed -i "s/minSdkVersion = [0-9]*/minSdkVersion = ${{ steps.cfg.outputs.minSdk }}/" $VG
+            sed -i "s/compileSdkVersion = [0-9]*/compileSdkVersion = ${{ steps.cfg.outputs.compileSdk }}/" $VG
+            sed -i "s/targetSdkVersion = [0-9]*/targetSdkVersion = ${{ steps.cfg.outputs.targetSdk }}/" $VG
+          fi
+          BG=android/app/build.gradle
+          sed -i "s|applicationId \".*\"|applicationId \"${{ steps.cfg.outputs.appId }}\"|" $BG
+          sed -i "s|versionCode [0-9]*|versionCode ${{ steps.cfg.outputs.versionCode }}|" $BG
+          sed -i "s|versionName \".*\"|versionName \"${{ steps.cfg.outputs.version }}\"|" $BG
+          sed -i "s|namespace \".*\"|namespace \"${{ steps.cfg.outputs.appId }}\"|" $BG
+
+      - name: Sincronizar Capacitor
+        run: npx cap sync android
+
+      - name: Generar iconos y splash
+        run: |
+          if [ -f assets/icon.png ]; then
+            npx @capacitor/assets generate --android || echo "Assets generation skipped"
+          else
+            node scripts/generate-icons.js "${{ steps.cfg.outputs.appName }}" "#0a0f1d" || echo "Script generador no disponible"
+          fi
+
+      - name: Compilar APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Renombrar APK
+        run: |
+          APK=$(find android/app/build/outputs/apk/debug -name "*.apk" | head -1)
+          cp "$APK" "${{ steps.cfg.outputs.safeName }}-v${{ steps.cfg.outputs.version }}.apk"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: APK-Instalable
+          path: "*.apk"
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Resumen
+        run: |
+          echo "## 📱 ${{ steps.cfg.outputs.appName }} compilado" >> $GITHUB_STEP_SUMMARY
+          echo "| Campo | Valor |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| App Name | ${{ steps.cfg.outputs.appName }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| App ID | ${{ steps.cfg.outputs.appId }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Version | ${{ steps.cfg.outputs.version }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Author | josevdr95 |" >> $GITHUB_STEP_SUMMARY
+          echo "| License | MIT © 2026 |" >> $GITHUB_STEP_SUMMARY
