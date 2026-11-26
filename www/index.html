@@ -1,44 +1,1258 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="zh-CN">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <meta http-equiv="Content-Security-Policy" content="default-src *; script-src * 'unsafe-inline' 'unsafe-eval'; style-src * 'unsafe-inline'; img-src * data: blob:; connect-src *" />
-  <meta name="theme-color" content="#0a0f1d" />
-  <title>NOMBRE_APP</title>
-  <script src="js/tailwind.js"></script>
-  <script>
-    tailwind.config = { theme: { extend: {
-      colors: { ink: { 900:'#0a0f1d', 800:'#0f172a', 700:'#1e293b', 600:'#334155', 400:'#64748b', 200:'#cbd5e1' } },
-    }}};
-  </script>
-  <link rel="stylesheet" href="css/style.css" />
-  <script src="js/lucide.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>口腔就诊登记工具</title>
+<style>
+  :root {
+    --primary: #0f6e6e;
+    --primary-light: #e6f4f4;
+    --primary-hover: #0a5454;
+    --bg: #f6f8f9;
+    --card: #ffffff;
+    --input-bg: #eef1f3;
+    --text: #1e293b;
+    --text-muted: #64748b;
+    --border: #d9e1e6;
+    --danger: #dc2626;
+    --danger-bg: #fef2f2;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding-bottom: 76px;
+  }
+  .container {
+    max-width: 560px;
+    margin: 0 auto;
+    padding: 16px 16px 24px;
+  }
+  .page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .page-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0;
+  }
+  .edit-badge {
+    display: none;
+    background: #fef3c7;
+    color: #b45309;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 20px;
+  }
+  .section { display: none; }
+  .section.active { display: block; }
+
+  .form-group { margin-bottom: 18px; }
+  .form-label {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 8px;
+  }
+  .form-hint {
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--text-muted);
+  }
+  .text-input {
+    width: 100%;
+    height: 46px;
+    background: var(--input-bg);
+    border: 1.5px solid transparent;
+    border-radius: 10px;
+    padding: 0 14px;
+    font-size: 15px;
+    color: var(--text);
+    outline: none;
+    transition: all 0.2s;
+  }
+  .text-input:focus {
+    background: #ffffff;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(15, 110, 110, 0.12);
+  }
+
+  /* 性别选择 */
+  .gender-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .gender-btn {
+    height: 44px;
+    border-radius: 10px;
+    border: 1.5px solid var(--border);
+    background: #ffffff;
+    color: var(--text);
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.18s;
+  }
+  .gender-btn.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #ffffff;
+  }
+
+  /* FDI 牙根轮廓牙位图卡片 */
+  .chart-card {
+    background: #f1f4f6;
+    border-radius: 14px;
+    padding: 12px 6px;
+    border: 1px solid #e4e9ed;
+    position: relative;
+    user-select: none;
+  }
+  .arch-title {
+    text-align: center;
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 500;
+    letter-spacing: 1px;
+  }
+  .arch-title.upper { margin-bottom: 6px; }
+  .arch-title.lower { margin-top: 6px; }
+
+  .jaw-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr) 10px repeat(8, 1fr);
+    align-items: center;
+    gap: 2px;
+  }
+  .midline-v {
+    height: 100%;
+    display: flex;
+    justify-content: center;
+  }
+  .midline-v::after {
+    content: "";
+    width: 0;
+    height: 100%;
+    border-left: 1.5px dashed #cbd5e1;
+  }
+  .midline-h-wrap {
+    display: flex;
+    align-items: center;
+    margin: 10px 4px;
+    gap: 8px;
+  }
+  .side-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 500;
+    flex-shrink: 0;
+  }
+  .midline-h {
+    flex: 1;
+    border-top: 1.5px dashed #cbd5e1;
+  }
+
+  .tooth-btn {
+    background: transparent;
+    border: none;
+    padding: 1px 0;
+    margin: 0;
+    width: 100%;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transition: transform 0.1s;
+  }
+  .tooth-btn:active {
+    transform: scale(0.93);
+  }
+  .tooth-svg {
+    width: 100%;
+    max-width: 28px;
+    height: auto;
+    display: block;
+  }
+  .tooth-root, .tooth-crown {
+    fill: #ffffff;
+    stroke: #7f8c98;
+    stroke-width: 1.4;
+    stroke-linejoin: round;
+    transition: fill 0.15s, stroke 0.15s;
+  }
+  .tooth-num {
+    font-size: 10.5px;
+    font-weight: 600;
+    fill: #334155;
+    text-anchor: middle;
+    dominant-baseline: central;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    transition: fill 0.15s;
+  }
+  .tooth-btn.selected .tooth-root,
+  .tooth-btn.selected .tooth-crown {
+    fill: var(--primary);
+    stroke: var(--primary);
+  }
+  .tooth-btn.selected .tooth-num {
+    fill: #ffffff;
+  }
+
+  .tooth-status-bar {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 10px;
+    padding: 0 2px;
+  }
+  .selected-info {
+    font-size: 13.5px;
+    color: var(--text-muted);
+    line-height: 1.45;
+    word-break: break-all;
+  }
+  .selected-info.has-val {
+    color: var(--primary);
+    font-weight: 600;
+  }
+  .clear-teeth-btn {
+    background: none;
+    border: none;
+    color: var(--primary);
+    font-size: 13.5px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0;
+    flex-shrink: 0;
+  }
+  .clear-teeth-btn:active { opacity: 0.65; }
+
+  /* 治疗项目快捷选择 */
+  .quick-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin-top: 8px;
+  }
+  .tag-chip {
+    background: #ffffff;
+    border: 1px solid var(--border);
+    color: #334155;
+    font-size: 12.5px;
+    padding: 5px 10px;
+    border-radius: 16px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .tag-chip:active {
+    background: var(--primary-light);
+    border-color: var(--primary);
+    color: var(--primary);
+  }
+
+  .btn-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 22px;
+  }
+  .primary-btn {
+    flex: 1;
+    height: 48px;
+    background: var(--primary);
+    color: #ffffff;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(15, 110, 110, 0.22);
+  }
+  .primary-btn:active { background: var(--primary-hover); }
+  .secondary-btn {
+    height: 48px;
+    padding: 0 18px;
+    background: #e2e8f0;
+    color: #334155;
+    border: none;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  /* 历史记录列表 */
+  .toolbar {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .action-bar {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .tool-btn {
+    flex: 1;
+    min-width: 105px;
+    height: 38px;
+    border-radius: 9px;
+    border: 1px solid var(--border);
+    background: #ffffff;
+    color: #1e293b;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+  }
+  .tool-btn.primary-outline {
+    border-color: var(--primary);
+    color: var(--primary);
+    background: var(--primary-light);
+  }
+  .tool-btn.danger-outline {
+    border-color: #fecaca;
+    color: var(--danger);
+    background: var(--danger-bg);
+  }
+
+  .record-card {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 10px;
+    border: 1px solid #e8eef2;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  }
+  .record-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .patient-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .patient-name {
+    font-size: 16px;
+    font-weight: 700;
+    color: #0f172a;
+  }
+  .gender-tag {
+    font-size: 11.5px;
+    padding: 2px 7px;
+    border-radius: 6px;
+    font-weight: 600;
+  }
+  .gender-tag.male { background: #e0f2fe; color: #0369a1; }
+  .gender-tag.female { background: #fce7f3; color: #be185d; }
+  .record-amount {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--primary);
+  }
+  .record-detail {
+    font-size: 13.5px;
+    color: #334155;
+    line-height: 1.55;
+    margin-bottom: 10px;
+  }
+  .record-teeth-pill {
+    display: inline-block;
+    background: var(--primary-light);
+    color: var(--primary);
+    font-weight: 600;
+    padding: 1px 7px;
+    border-radius: 5px;
+    font-size: 12.5px;
+    margin-right: 4px;
+  }
+  .record-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 8px;
+    border-top: 1px solid #f1f5f9;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .record-ops {
+    display: flex;
+    gap: 12px;
+  }
+  .op-link {
+    background: none;
+    border: none;
+    padding: 2px 4px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .op-edit { color: var(--primary); }
+  .op-del { color: var(--danger); }
+
+  /* 月度统计 */
+  .summary-banner {
+    background: linear-gradient(135deg, #0f6e6e 0%, #148b8b 100%);
+    color: #ffffff;
+    border-radius: 14px;
+    padding: 18px;
+    margin-bottom: 14px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .stat-box-label {
+    font-size: 12.5px;
+    opacity: 0.85;
+    margin-bottom: 4px;
+  }
+  .stat-box-val {
+    font-size: 22px;
+    font-weight: 700;
+  }
+  .chart-box {
+    background: #ffffff;
+    border-radius: 14px;
+    padding: 14px;
+    border: 1px solid #e8eef2;
+    margin-bottom: 14px;
+  }
+  .chart-box-title {
+    font-size: 14px;
+    font-weight: 700;
+    margin: 0 0 10px 0;
+    color: #1e293b;
+  }
+  #incomeCanvas {
+    width: 100%;
+    height: 190px;
+    display: block;
+  }
+  .month-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #ffffff;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid #e8eef2;
+  }
+  .month-table th, .month-table td {
+    padding: 12px 14px;
+    text-align: left;
+    font-size: 14px;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  .month-table th {
+    background: #f8fafc;
+    color: var(--text-muted);
+    font-weight: 600;
+    font-size: 13px;
+  }
+  .month-table td.num {
+    text-align: right;
+    font-weight: 600;
+  }
+  .month-table th.num { text-align: right; }
+
+  /* 底部导航栏 */
+  .bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 62px;
+    background: #ffffff;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    z-index: 50;
+  }
+  .nav-item {
+    flex: 1;
+    height: 100%;
+    background: none;
+    border: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .nav-item.active {
+    color: var(--primary);
+    font-weight: 700;
+  }
+  .nav-icon {
+    font-size: 18px;
+    line-height: 1;
+  }
+
+  /* 确认弹窗 & Toast */
+  .modal-mask {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    z-index: 100;
+  }
+  .modal-mask.show { display: flex; }
+  .modal-card {
+    background: #ffffff;
+    width: 100%;
+    max-width: 340px;
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.16);
+  }
+  .modal-title {
+    font-size: 17px;
+    font-weight: 700;
+    margin: 0 0 8px 0;
+  }
+  .modal-desc {
+    font-size: 14px;
+    color: var(--text-muted);
+    margin: 0 0 18px 0;
+    line-height: 1.5;
+  }
+  .modal-actions {
+    display: flex;
+    gap: 10px;
+  }
+  .modal-btn {
+    flex: 1;
+    height: 40px;
+    border-radius: 10px;
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .toast {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-20px);
+    background: rgba(15, 23, 42, 0.88);
+    color: #ffffff;
+    padding: 9px 18px;
+    border-radius: 20px;
+    font-size: 13.5px;
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.22s;
+    z-index: 200;
+    white-space: nowrap;
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  .empty-state {
+    text-align: center;
+    padding: 44px 16px;
+    color: var(--text-muted);
+    font-size: 14px;
+  }
+</style>
 </head>
-<body class="bg-ink-900 text-ink-200 antialiased">
+<body>
 
-<div class="min-h-screen flex flex-col items-center justify-center p-6">
-  <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-emerald-400 to-cyan-500 grid place-items-center shadow-lg shadow-emerald-500/20 mb-4">
-    <i data-lucide="app-window" class="w-10 h-10 text-ink-900"></i>
-  </div>
-  <h1 class="text-2xl font-bold text-white">NOMBRE_APP</h1>
-  <p class="text-sm text-ink-400 mt-1">v1.0.0</p>
-  <p class="text-xs text-ink-400 mt-4 text-center max-w-xs">Descripción de la app aquí.</p>
+<div class="container">
+  <!-- 标签页 1：新增记录 -->
+  <section id="tab-add" class="section active">
+    <div class="page-header">
+      <h1 class="page-title" id="formPageTitle">新增记录</h1>
+      <span class="edit-badge" id="editBadge">正在编辑历史记录</span>
+    </div>
 
-  <div class="mt-8 w-full max-w-sm space-y-3">
-    <!-- Contenido de la app aquí -->
-  </div>
+    <div class="form-group">
+      <label class="form-label" for="patientName">名字</label>
+      <input type="text" id="patientName" class="text-input" placeholder="请输入患者姓名">
+    </div>
 
-  <div class="mt-auto pt-8 text-center">
-    <p class="text-[10px] text-ink-600">josevdr95 · v1.0.0 · MIT © 2026</p>
+    <div class="form-group">
+      <div class="form-label">性别</div>
+      <div class="gender-group">
+        <button type="button" class="gender-btn active" data-gender="男" onclick="selectGender('男')">男</button>
+        <button type="button" class="gender-btn" data-gender="女" onclick="selectGender('女')">女</button>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <div class="form-label">牙位 <span class="form-hint">点牙齿选择，可多选</span></div>
+      <div class="chart-card">
+        <div class="arch-title upper">上颌</div>
+        <div class="jaw-grid" id="upperJawGrid"></div>
+
+        <div class="midline-h-wrap">
+          <span class="side-label">右</span>
+          <div class="midline-h"></div>
+          <span class="side-label">左</span>
+        </div>
+
+        <div class="jaw-grid" id="lowerJawGrid"></div>
+        <div class="arch-title lower">下颌</div>
+      </div>
+
+      <div class="tooth-status-bar">
+        <div id="selectedTeethText" class="selected-info">还没选牙位</div>
+        <button type="button" class="clear-teeth-btn" onclick="clearSelectedTeeth()">清除选择</button>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="treatmentInput">治疗方案</label>
+      <input type="text" id="treatmentInput" class="text-input" placeholder="输入治疗项目或点击下方快捷选择">
+      <div class="quick-tags" id="quickTags"></div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="amountInput">金额（元）</label>
+      <input type="number" id="amountInput" class="text-input" inputmode="decimal" step="0.01" min="0" placeholder="0.00">
+    </div>
+
+    <div class="btn-row">
+      <button type="button" id="cancelEditBtn" class="secondary-btn" style="display:none;" onclick="cancelEdit()">取消修改</button>
+      <button type="button" id="saveRecordBtn" class="primary-btn" onclick="saveRecord()">保存记录</button>
+    </div>
+  </section>
+
+  <!-- 标签页 2：历史记录 -->
+  <section id="tab-history" class="section">
+    <div class="page-header">
+      <h1 class="page-title">历史记录 <span id="totalCountBadge" style="font-size:14px;font-weight:500;color:#64748b;"></span></h1>
+    </div>
+
+    <div class="toolbar">
+      <input type="text" id="searchInput" class="text-input" placeholder="搜索患者姓名、牙位号或治疗方案..." oninput="renderHistory()">
+      <div class="action-bar">
+        <button type="button" class="tool-btn primary-outline" onclick="exportCSV()">📥 导出 CSV</button>
+        <button type="button" class="tool-btn" onclick="copyCSVText()">📋 复制表格文本</button>
+        <button type="button" class="tool-btn danger-outline" onclick="openClearModal()">🗑️ 一键清空</button>
+      </div>
+    </div>
+
+    <div id="historyList"></div>
+  </section>
+
+  <!-- 标签页 3：月度统计 -->
+  <section id="tab-stats" class="section">
+    <div class="page-header">
+      <h1 class="page-title">月度统计</h1>
+    </div>
+
+    <div class="summary-banner">
+      <div>
+        <div class="stat-box-label">累计总收入（元）</div>
+        <div class="stat-box-val" id="grandTotalAmount">¥0.00</div>
+      </div>
+      <div>
+        <div class="stat-box-label">累计接诊人次</div>
+        <div class="stat-box-val" id="grandTotalCount">0</div>
+      </div>
+    </div>
+
+    <div class="chart-box">
+      <h2 class="chart-box-title">月度收费趋势图（元）</h2>
+      <canvas id="incomeCanvas"></canvas>
+    </div>
+
+    <table class="month-table">
+      <thead>
+        <tr>
+          <th>月份</th>
+          <th class="num">就诊条数</th>
+          <th class="num">当月收费合计</th>
+        </tr>
+      </thead>
+      <tbody id="monthTableBody"></tbody>
+    </table>
+  </section>
+</div>
+
+<!-- 底部三标签切换栏 -->
+<nav class="bottom-nav">
+  <button type="button" class="nav-item active" data-tab="add" onclick="switchTab('add')">
+    <span class="nav-icon">✏️</span>
+    <span>新增记录</span>
+  </button>
+  <button type="button" class="nav-item" data-tab="history" onclick="switchTab('history')">
+    <span class="nav-icon">📋</span>
+    <span>历史记录</span>
+  </button>
+  <button type="button" class="nav-item" data-tab="stats" onclick="switchTab('stats')">
+    <span class="nav-icon">📊</span>
+    <span>月度统计</span>
+  </button>
+</nav>
+
+<!-- 清空确认弹窗 -->
+<div class="modal-mask" id="clearModal">
+  <div class="modal-card">
+    <h3 class="modal-title">确认清空全部记录？</h3>
+    <p class="modal-desc">此操作将永久删除本地保存的所有就诊记录且无法恢复，建议先导出 CSV 备份。</p>
+    <div class="modal-actions">
+      <button type="button" class="modal-btn" style="background:#e2e8f0;color:#334155;" onclick="closeClearModal()">取消</button>
+      <button type="button" class="modal-btn" style="background:#dc2626;color:#ffffff;" onclick="confirmClearAll()">确认清空</button>
+    </div>
   </div>
 </div>
 
-<script src="js/app.js"></script>
+<div class="toast" id="toast"></div>
+
 <script>
-  // App initialization
-  console.log('NOMBRE_APP iniciada');
-  lucide.createIcons();
+  const STORAGE_KEY = 'dental_clinic_records_v1';
+  const UPPER_RIGHT = [18, 17, 16, 15, 14, 13, 12, 11];
+  const UPPER_LEFT  = [21, 22, 23, 24, 25, 26, 27, 28];
+  const LOWER_RIGHT = [48, 47, 46, 45, 44, 43, 42, 41];
+  const LOWER_LEFT  = [31, 32, 33, 34, 35, 36, 37, 38];
+
+  const QUICK_TREATMENTS = [
+    '超声波洁牙', '树脂补牙', '根管治疗', '智齿拔除',
+    '全瓷冠修复', '种植牙修复', '牙周刮治', '牙齿美白',
+    '正畸复诊', '口腔检查/拍片'
+  ];
+
+  let selectedGender = '男';
+  let selectedTeeth = new Set();
+  let editingId = null;
+
+  function loadRecords() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function saveRecords(list) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+  }
+
+  function showToast(msg) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(el._timer);
+    el._timer = setTimeout(() => el.classList.remove('show'), 2200);
+  }
+
+  // 生成带牙根轮廓的竖向 SVG 牙齿按钮
+  function createToothElement(num, isUpper) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'tooth-btn';
+    btn.dataset.tooth = num;
+    btn.onclick = () => toggleTooth(num);
+
+    if (isUpper) {
+      // 上颌：牙根朝上，圆角牙冠在下方
+      btn.innerHTML = `
+        <svg class="tooth-svg" viewBox="0 0 28 58" aria-label="牙位 ${num}">
+          <polygon class="tooth-root" points="14,2 5,23 23,23" />
+          <rect class="tooth-crown" x="3" y="23" width="22" height="33" rx="6" ry="6" />
+          <text class="tooth-num" x="14" y="40">${num}</text>
+        </svg>
+      `;
+    } else {
+      // 下颌：圆角牙冠在上方，牙根朝下
+      btn.innerHTML = `
+        <svg class="tooth-svg" viewBox="0 0 28 58" aria-label="牙位 ${num}">
+          <rect class="tooth-crown" x="3" y="2" width="22" height="33" rx="6" ry="6" />
+          <polygon class="tooth-root" points="5,35 23,35 14,56" />
+          <text class="tooth-num" x="14" y="19">${num}</text>
+        </svg>
+      `;
+    }
+    return btn;
+  }
+
+  function initDentalChart() {
+    const upperGrid = document.getElementById('upperJawGrid');
+    const lowerGrid = document.getElementById('lowerJawGrid');
+
+    UPPER_RIGHT.forEach(n => upperGrid.appendChild(createToothElement(n, true)));
+    const uMid = document.createElement('div');
+    uMid.className = 'midline-v';
+    upperGrid.appendChild(uMid);
+    UPPER_LEFT.forEach(n => upperGrid.appendChild(createToothElement(n, true)));
+
+    LOWER_RIGHT.forEach(n => lowerGrid.appendChild(createToothElement(n, false)));
+    const lMid = document.createElement('div');
+    lMid.className = 'midline-v';
+    lowerGrid.appendChild(lMid);
+    LOWER_LEFT.forEach(n => lowerGrid.appendChild(createToothElement(n, false)));
+  }
+
+  function initQuickTags() {
+    const wrap = document.getElementById('quickTags');
+    QUICK_TREATMENTS.forEach(item => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'tag-chip';
+      chip.textContent = item;
+      chip.onclick = () => {
+        const input = document.getElementById('treatmentInput');
+        const cur = input.value.trim();
+        if (!cur) {
+          input.value = item;
+        } else if (!cur.includes(item)) {
+          input.value = cur + '、' + item;
+        }
+      };
+      wrap.appendChild(chip);
+    });
+  }
+
+  function selectGender(g) {
+    selectedGender = g;
+    document.querySelectorAll('.gender-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.gender === g);
+    });
+  }
+
+  function toggleTooth(num) {
+    if (selectedTeeth.has(num)) {
+      selectedTeeth.delete(num);
+    } else {
+      selectedTeeth.add(num);
+    }
+    syncTeethUI();
+  }
+
+  function clearSelectedTeeth() {
+    selectedTeeth.clear();
+    syncTeethUI();
+  }
+
+  function syncTeethUI() {
+    document.querySelectorAll('.tooth-btn').forEach(btn => {
+      const n = Number(btn.dataset.tooth);
+      btn.classList.toggle('selected', selectedTeeth.has(n));
+    });
+    const statusEl = document.getElementById('selectedTeethText');
+    if (selectedTeeth.size === 0) {
+      statusEl.textContent = '还没选牙位';
+      statusEl.classList.remove('has-val');
+    } else {
+      const sorted = Array.from(selectedTeeth).sort((a, b) => a - b);
+      statusEl.textContent = `已选 (${sorted.length}颗)：${sorted.join('、')}`;
+      statusEl.classList.add('has-val');
+    }
+  }
+
+  function formatNow() {
+    const d = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const yearMonth = `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
+    const dateStr = `${yearMonth}-${pad(d.getDate())}`;
+    const timeStr = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    return { yearMonth, fullTime: `${dateStr} ${timeStr}` };
+  }
+
+  function saveRecord() {
+    const name = document.getElementById('patientName').value.trim();
+    const treatment = document.getElementById('treatmentInput').value.trim();
+    const amountRaw = document.getElementById('amountInput').value.trim();
+
+    if (!name) {
+      showToast('请输入患者名字');
+      document.getElementById('patientName').focus();
+      return;
+    }
+    if (!treatment) {
+      showToast('请填写或选择治疗方案');
+      document.getElementById('treatmentInput').focus();
+      return;
+    }
+    const amount = parseFloat(amountRaw || '0');
+    if (isNaN(amount) || amount < 0) {
+      showToast('请输入有效的收费金额');
+      document.getElementById('amountInput').focus();
+      return;
+    }
+
+    const teethArr = Array.from(selectedTeeth).sort((a, b) => a - b);
+    const records = loadRecords();
+
+    if (editingId) {
+      const idx = records.findIndex(r => r.id === editingId);
+      if (idx !== -1) {
+        records[idx] = {
+          ...records[idx],
+          name,
+          gender: selectedGender,
+          teeth: teethArr,
+          treatment,
+          amount: Number(amount.toFixed(2))
+        };
+      }
+      saveRecords(records);
+      showToast('记录已更新');
+      resetForm();
+      switchTab('history');
+    } else {
+      const { yearMonth, fullTime } = formatNow();
+      const newItem = {
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+        name,
+        gender: selectedGender,
+        teeth: teethArr,
+        treatment,
+        amount: Number(amount.toFixed(2)),
+        yearMonth,
+        createdAt: fullTime
+      };
+      records.unshift(newItem);
+      saveRecords(records);
+      showToast('已保存就诊记录');
+      resetForm();
+    }
+  }
+
+  function resetForm() {
+    editingId = null;
+    document.getElementById('formPageTitle').textContent = '新增记录';
+    document.getElementById('editBadge').style.display = 'none';
+    document.getElementById('cancelEditBtn').style.display = 'none';
+    document.getElementById('saveRecordBtn').textContent = '保存记录';
+    document.getElementById('patientName').value = '';
+    document.getElementById('treatmentInput').value = '';
+    document.getElementById('amountInput').value = '';
+    selectGender('男');
+    clearSelectedTeeth();
+  }
+
+  function editRecord(id) {
+    const records = loadRecords();
+    const item = records.find(r => r.id === id);
+    if (!item) return;
+
+    editingId = item.id;
+    document.getElementById('formPageTitle').textContent = '编辑记录';
+    document.getElementById('editBadge').style.display = 'inline-block';
+    document.getElementById('cancelEditBtn').style.display = 'block';
+    document.getElementById('saveRecordBtn').textContent = '保存修改';
+
+    document.getElementById('patientName').value = item.name;
+    selectGender(item.gender || '男');
+    selectedTeeth = new Set(item.teeth || []);
+    syncTeethUI();
+    document.getElementById('treatmentInput').value = item.treatment;
+    document.getElementById('amountInput').value = item.amount;
+
+    switchTab('add');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function cancelEdit() {
+    resetForm();
+    showToast('已取消编辑');
+  }
+
+  function deleteRecord(id) {
+    const records = loadRecords().filter(r => r.id !== id);
+    saveRecords(records);
+    renderHistory();
+    showToast('已删除该条记录');
+  }
+
+  function openClearModal() {
+    const records = loadRecords();
+    if (records.length === 0) {
+      showToast('当前没有可清空的记录');
+      return;
+    }
+    document.getElementById('clearModal').classList.add('show');
+  }
+
+  function closeClearModal() {
+    document.getElementById('clearModal').classList.remove('show');
+  }
+
+  function confirmClearAll() {
+    saveRecords([]);
+    closeClearModal();
+    renderHistory();
+    showToast('已清空全部记录');
+  }
+
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function renderHistory() {
+    const allRecords = loadRecords();
+    const kw = document.getElementById('searchInput').value.trim().toLowerCase();
+    document.getElementById('totalCountBadge').textContent = `(${allRecords.length}条)`;
+
+    const filtered = kw
+      ? allRecords.filter(r =>
+          r.name.toLowerCase().includes(kw) ||
+          r.treatment.toLowerCase().includes(kw) ||
+          (r.teeth && r.teeth.join(',').includes(kw))
+        )
+      : allRecords;
+
+    const listEl = document.getElementById('historyList');
+    if (filtered.length === 0) {
+      listEl.innerHTML = `<div class="empty-state">${kw ? '未找到匹配的就诊记录' : '暂无就诊记录，点击下方“新增记录”开始登记'}</div>`;
+      return;
+    }
+
+    listEl.innerHTML = filtered.map(r => {
+      const teethHtml = (r.teeth && r.teeth.length)
+        ? `<span class="record-teeth-pill">牙位: ${r.teeth.join('、')}</span>`
+        : `<span class="record-teeth-pill" style="background:#f1f5f9;color:#64748b;">全口/未指定牙位</span>`;
+      const gClass = r.gender === '女' ? 'female' : 'male';
+      return `
+        <div class="record-card">
+          <div class="record-top">
+            <div class="patient-meta">
+              <span class="patient-name">${escapeHtml(r.name)}</span>
+              <span class="gender-tag ${gClass}">${escapeHtml(r.gender)}</span>
+            </div>
+            <div class="record-amount">¥${Number(r.amount).toFixed(2)}</div>
+          </div>
+          <div class="record-detail">
+            ${teethHtml}
+            <span>${escapeHtml(r.treatment)}</span>
+          </div>
+          <div class="record-bottom">
+            <span>${escapeHtml(r.createdAt)}</span>
+            <div class="record-ops">
+              <button type="button" class="op-link op-edit" onclick="editRecord('${r.id}')">编辑</button>
+              <button type="button" class="op-link op-del" onclick="deleteRecord('${r.id}')">删除</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function buildCSVContent() {
+    const records = loadRecords();
+    const headers = ['患者姓名', '性别', '牙位', '治疗方案', '收费金额(元)', '所属月份', '登记时间'];
+    const rows = records.map(r => [
+      r.name,
+      r.gender,
+      (r.teeth && r.teeth.length) ? r.teeth.join(' / ') : '未指定',
+      r.treatment,
+      Number(r.amount).toFixed(2),
+      r.yearMonth,
+      r.createdAt
+    ]);
+    const csvLines = [headers, ...rows].map(row =>
+      row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')
+    );
+    return '﻿' + csvLines.join('
+');
+  }
+
+  function exportCSV() {
+    const records = loadRecords();
+    if (records.length === 0) {
+      showToast('暂无记录可导出');
+      return;
+    }
+    const csv = buildCSVContent();
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const dateTag = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `口腔就诊登记表_${dateTag}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('CSV 表格已导出');
+  }
+
+  // 兼容部分手机 WebView 不支持 Blob 文件下载时的备用导出
+  function copyCSVText() {
+    const records = loadRecords();
+    if (records.length === 0) {
+      showToast('暂无记录可复制');
+      return;
+    }
+    const text = buildCSVContent().replace(/^﻿/, '');
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => {
+        showToast('已复制全部 CSV 数据，可直接粘贴进表格');
+      }).catch(() => fallbackCopy(text));
+    } else {
+      fallbackCopy(text);
+    }
+  }
+
+  function fallbackCopy(text) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('已复制全部 CSV 数据');
+  }
+
+  function renderStats() {
+    const records = loadRecords();
+    let grandAmount = 0;
+    const map = {};
+
+    records.forEach(r => {
+      const amt = Number(r.amount) || 0;
+      grandAmount += amt;
+      const ym = r.yearMonth || (r.createdAt ? r.createdAt.slice(0, 7) : '未知月份');
+      if (!map[ym]) map[ym] = { yearMonth: ym, count: 0, total: 0 };
+      map[ym].count += 1;
+      map[ym].total += amt;
+    });
+
+    document.getElementById('grandTotalAmount').textContent = `¥${grandAmount.toFixed(2)}`;
+    document.getElementById('grandTotalCount').textContent = `${records.length} 人次`;
+
+    const monthsDesc = Object.values(map).sort((a, b) => b.yearMonth.localeCompare(a.yearMonth));
+    const tbody = document.getElementById('monthTableBody');
+
+    if (monthsDesc.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;color:#64748b;padding:24px;">暂无统计数据</td></tr>`;
+    } else {
+      tbody.innerHTML = monthsDesc.map(m => `
+        <tr>
+          <td><strong>${escapeHtml(m.yearMonth)}</strong></td>
+          <td class="num">${m.count} 条</td>
+          <td class="num" style="color:#0f6e6e;">¥${m.total.toFixed(2)}</td>
+        </tr>
+      `).join('');
+    }
+
+    drawChart([...monthsDesc].reverse().slice(-8));
+  }
+
+  function drawChart(data) {
+    const canvas = document.getElementById('incomeCanvas');
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    const width = rect.width || 320;
+    const height = 190;
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
+
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    ctx.clearRect(0, 0, width, height);
+
+    if (!data || data.length === 0) {
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '13px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('录入就诊记录后将在此显示月度收入柱状图', width / 2, height / 2);
+      return;
+    }
+
+    const padLeft = 14, padRight = 14, padTop = 28, padBottom = 30;
+    const plotW = width - padLeft - padRight;
+    const plotH = height - padTop - padBottom;
+    const maxVal = Math.max(...data.map(d => d.total), 10);
+
+    // 底线
+    ctx.strokeStyle = '#e2e8f0';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(padLeft, padTop + plotH);
+    ctx.lineTo(width - padRight, padTop + plotH);
+    ctx.stroke();
+
+    const step = plotW / data.length;
+    const barW = Math.min(34, step * 0.52);
+
+    data.forEach((item, i) => {
+      const barH = Math.max(4, (item.total / maxVal) * plotH);
+      const x = padLeft + i * step + (step - barW) / 2;
+      const y = padTop + plotH - barH;
+
+      // 柱体
+      ctx.fillStyle = '#0f6e6e';
+      ctx.beginPath();
+      if (ctx.roundRect) {
+        ctx.roundRect(x, y, barW, barH, [5, 5, 0, 0]);
+      } else {
+        ctx.rect(x, y, barW, barH);
+      }
+      ctx.fill();
+
+      // 金额标签
+      ctx.fillStyle = '#0f172a';
+      ctx.font = '600 11px sans-serif';
+      ctx.textAlign = 'center';
+      const valLabel = item.total >= 10000 ? (item.total / 10000).toFixed(1) + 'w' : Math.round(item.total);
+      ctx.fillText(valLabel, x + barW / 2, y - 6);
+
+      // 月份标签
+      ctx.fillStyle = '#64748b';
+      ctx.font = '11px sans-serif';
+      ctx.fillText(item.yearMonth.slice(2), x + barW / 2, padTop + plotH + 17);
+    });
+  }
+
+  function switchTab(tabName) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+
+    document.getElementById(`tab-${tabName}`).classList.add('active');
+    document.querySelector(`.nav-item[data-tab="${tabName}"]`).classList.add('active');
+
+    if (tabName === 'history') renderHistory();
+    if (tabName === 'stats') renderStats();
+  }
+
+  window.addEventListener('resize', () => {
+    if (document.getElementById('tab-stats').classList.contains('active')) {
+      renderStats();
+    }
+  });
+
+  initDentalChart();
+  initQuickTags();
 </script>
 </body>
 </html>
